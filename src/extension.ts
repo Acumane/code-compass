@@ -21,12 +21,12 @@ export function activate(context: code.ExtensionContext) {
   }, null, context.subscriptions)
 
   code.workspace.onDidChangeTextDocument(changed => {
-    if (editor && changed.document === editor.document) utils.checkFns(editor)
+    if (editor && changed.document == editor.document) utils.checkFns(editor)
   }, null, context.subscriptions)
 
   // Watch for cursor movements:
   code.window.onDidChangeTextEditorSelection(event => {
-    if (editor && event.textEditor === editor) {
+    if (editor && event.textEditor == editor) {
       const position = event.selections[0].active
 
       if (prevLine != position.line) { // only check on line change
@@ -35,11 +35,15 @@ export function activate(context: code.ExtensionContext) {
           code.window.showInformationMessage('Learn about this function?', 'Start', 'Dismiss')
             .then(choice => {
               if (choice == 'Start') {
-                utils.dim(editor, onFn.range); learning = true
+                let start = onFn.range.start.line 
+                utils.dim(editor, start)
+                utils.hlLine(editor, start + 4, "Are ya learning son?")
+                learning = true
                 code.window.showInformationMessage('Learning', 'Done', )
                 .then(choice => {
                   if (choice == 'Done' && utils.dimmer) {
-                    utils.dimmer.dispose(); learning = false
+                    utils.dimmer.dispose(); utils.hl.dispose()
+                    learning = false
                   }
                 })
               }
