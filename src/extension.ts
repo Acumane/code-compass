@@ -1,71 +1,57 @@
-import * as vscode from 'vscode'
+import * as code from 'vscode'
+import * as utils from './utils'
 
-let dismissed: string[] = []
+type Deco = code.TextEditorDecorationType
+export var help: Deco
 
 // Runs on ext activation:
-export function activate(context: vscode.ExtensionContext) {
-  const help = vscode.window.createTextEditorDecorationType({
+export function activate(context: code.ExtensionContext) {
+  help = code.window.createTextEditorDecorationType({
     gutterIconPath: context.asAbsolutePath('src/help.svg'),
-    gutterIconSize: 'contain'
   })
-
+  
   // Array of all icons added to the active editor:
-  let helpIcons: vscode.DecorationOptions[] = [],
-  editor = vscode.window.activeTextEditor
-  if (editor) checkFns()
+  let editor = code.window.activeTextEditor,
+  prevLine: null | number = null, learning = false
 
-  vscode.window.onDidChangeActiveTextEditor(changed => {
-    if (changed) checkFns()
+  if (editor) utils.checkFns(editor)
+
+  code.window.onDidChangeActiveTextEditor(changed => {
+    if (editor && changed) utils.checkFns(editor)
   }, null, context.subscriptions)
 
-  vscode.workspace.onDidChangeTextDocument(changed => {
-    if (editor && changed.document === editor.document) checkFns()
+  code.workspace.onDidChangeTextDocument(changed => {
+    if (editor && changed.document === editor.document) utils.checkFns(editor)
   }, null, context.subscriptions)
-
-  function checkFns() {
-    if (!editor) return
-
-    const text = editor.document.getText(),
-    RE = /def\s+\w+\s*\(.*\):/g
-    helpIcons = []
-    let match
-
-    // Find all function signatures in the active editor:
-    while ((match = RE.exec(text))) {
-      const signature = match[0]
-      if (!dismissed.includes(signature)) {
-        const line = editor.document.positionAt(match.index).line;
-        const decoration: vscode.DecorationOptions = {
-          range: editor.document.lineAt(line).range,
-        }
-        helpIcons.push(decoration)
-      }
-    }
-    // use help.svg for each decroration in helpIcons
-    editor.setDecorations(help, helpIcons)
-  }
-
-  function learn() {
-    vscode.window.showInformationMessage('TODO')
-  }
 
   // Watch for cursor movements:
-  vscode.window.onDidChangeTextEditorSelection(event => {
+  code.window.onDidChangeTextEditorSelection(event => {
     if (editor && event.textEditor === editor) {
-      const position = event.selections[0].active,
-      onFn = helpIcons.find(icon => icon.range.contains(position))
+      const position = event.selections[0].active
 
-      if (onFn) {
-        vscode.window.showInformationMessage('Learn about this function?', 'Start', 'Dismiss')
-          .then(choice => {
-            if (choice === 'Start') learn()
-            else if (choice === 'Dismiss') {
-              const sig = editor.document.getText(onFn.range)
-              dismissed.push(sig)
-              checkFns()
-            }
-          })
+      if (prevLine != position.line) { // only check on line change
+        const onFn = utils.helpPos.find(icon => icon.range.contains(position))
+        if (onFn && !learning) {
+          code.window.showInformationMessage('Learn about this function?', 'Start', 'Dismiss')
+            .then(choice => {
+              if (choice == 'Start') {
+                utils.dim(editor, onFn.range); learning = true
+                code.window.showInformationMessage('Learning', 'Done', )
+                .then(choice => {
+                  if (choice == 'Done' && utils.dimmer) {
+                    utils.dimmer.dispose(); learning = false
+                  }
+                })
+              }
+              else if (choice == 'Dismiss') {
+                const sig = editor.document.getText(onFn.range)
+                utils.dismissed.push(sig)
+                utils.checkFns(editor)
+              }
+            })
+        }
       }
+      prevLine = position.line
     }
   }, null, context.subscriptions)
 }
