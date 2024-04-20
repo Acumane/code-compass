@@ -9,10 +9,20 @@ export function activate(context: code.ExtensionContext) {
   help = code.window.createTextEditorDecorationType({
     gutterIconPath: context.asAbsolutePath('src/help.svg'),
   })
-  
+
   // Array of all icons added to the active editor:
   let editor = code.window.activeTextEditor,
   prevLine: null | number = null, learning = false
+
+  code.commands.registerCommand('compass.continue', (nextLine, content) => {
+    utils.actions.dispose(); utils.hl.dispose()
+    if (editor) utils.focus(editor, nextLine, `${content}`)
+  })
+
+  code.commands.registerCommand('compass.exit', () => {
+    utils.dimmer.dispose(); utils.hl.dispose(); utils.actions.dispose()
+    learning = false
+  })
 
   if (editor) utils.checkFns(editor)
 
@@ -37,13 +47,12 @@ export function activate(context: code.ExtensionContext) {
               if (choice == 'Start') {
                 let start = onFn.range.start.line 
                 utils.dim(editor, start)
-                utils.hlLine(editor, start + 4, "Are ya learning son?")
+                utils.focus(editor, start + 4, "Are ya learning son?")
                 learning = true
-                code.window.showInformationMessage('Learning', 'Done', )
+                code.window.showInformationMessage('Learning', 'Done')
                 .then(choice => {
                   if (choice == 'Done' && utils.dimmer) {
-                    utils.dimmer.dispose(); utils.hl.dispose()
-                    learning = false
+                    code.commands.executeCommand('compass.exit')
                   }
                 })
               }

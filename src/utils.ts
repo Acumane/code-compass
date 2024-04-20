@@ -3,8 +3,8 @@ import { help } from './extension'
 
 type Deco = code.TextEditorDecorationType
 type DecoOpts = code.DecorationOptions
-export var dismissed: string[] = [],
-helpPos: DecoOpts[] = [], dimmer: Deco, hl: Deco
+export var dismissed: string[] = [], helpPos: DecoOpts[] = [],
+dimmer: Deco, hl: Deco, actions: code.Disposable
 
 export function checkFns(editor: code.TextEditor): void {
   if (!editor) return
@@ -45,9 +45,11 @@ export function dim(editor: code.TextEditor, start: number): void {
   editor.setDecorations(dimmer, dimRanges)
 }
 
-export function hlLine(editor: code.TextEditor, line: number, content: string): void {
+export function focus(editor: code.TextEditor, line: number, content: string): void {
+  // expects Range (we just care about the line):
+  const lineRange = new code.Range(line, 0, line, 0)
   const hlOpts: code.DecorationOptions = {
-    range: new code.Range(line, 0, line, 0),
+    range: lineRange,
     renderOptions: {
       after: {
         contentText: `${content}`,
@@ -58,8 +60,22 @@ export function hlLine(editor: code.TextEditor, line: number, content: string): 
     },
   }
   hl = code.window.createTextEditorDecorationType({
-    backgroundColor: '#FFA30440', isWholeLine: true,
+    backgroundColor: '#FFA30440',
+    isWholeLine: true,
   })
-
   editor.setDecorations(hl, [hlOpts])
+
+  actions = code.languages.registerCodeLensProvider('python', {
+    provideCodeLenses: () => [
+      new code.CodeLens(lineRange, {
+        title: '🗸 Continue',
+        command: 'compass.continue',
+        arguments: [line+1, "Placeholder"], // TODO
+      }),
+      new code.CodeLens(lineRange, {
+        title: '⨯ Exit',
+        command: 'compass.exit',
+      })
+    ],
+  })
 }
