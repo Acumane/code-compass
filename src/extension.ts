@@ -1,8 +1,9 @@
 import * as code from 'vscode'
 import * as utils from './utils'
+import * as input from './input'
 
 type Deco = code.TextEditorDecorationType
-export var help: Deco
+export var help: Deco, config: input.Config
 
 // Runs on ext activation:
 export function activate(context: code.ExtensionContext) {
@@ -10,14 +11,18 @@ export function activate(context: code.ExtensionContext) {
     gutterIconPath: context.asAbsolutePath('src/help.svg'),
   })
 
+  input.readConfig().then((JSON) => config = JSON)
+
   // Array of all icons added to the active editor:
   let editor = code.window.activeTextEditor,
   prevLine: null | number = null, learning = false
 
-  code.commands.registerCommand('compass.continue', (nextLine, content) => {
+  code.commands.registerCommand('compass.continue', (nextLine, config) => {
     utils.actions.dispose(); utils.hl.dispose()
-    if (editor) utils.focus(editor, nextLine, `${content}`)
+    if (editor) utils.focus(editor, nextLine, config)
   })
+
+  code.commands.registerCommand('compass.validate', (sol) => {} ) // TODO
 
   code.commands.registerCommand('compass.exit', () => {
     utils.dimmer.dispose(); utils.hl.dispose(); utils.actions.dispose()
@@ -47,7 +52,7 @@ export function activate(context: code.ExtensionContext) {
               if (choice == 'Start') {
                 let start = onFn.range.start.line 
                 utils.dim(editor, start)
-                utils.focus(editor, start + 4, "Are ya learning son?")
+                utils.focus(editor, start, config)
                 learning = true
                 code.window.showInformationMessage('Learning', 'Done')
                 .then(choice => {

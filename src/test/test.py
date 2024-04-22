@@ -29,7 +29,7 @@ while True:
     # Encode the frame
     # Send the frame to the server
     _, buffer = cv2.imencode(".jpg", frame)
-    encoded_frame = base64.b64encode(buffer).decode("utf-8")    
+    encoded_frame = base64.b64encode(buffer).decode("utf-8")
     sio.emit("grayscale", encoded_frame)
 
     # Calculate FPS
