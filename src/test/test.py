@@ -1,60 +1,60 @@
-from flask import Flask
-from flask_socketio import SocketIO
-import argparse
+import cv2
+import base64
+import socketio
+import numpy as np
+import time
 
-from utils import base64_to_img, img_to_base64, process_frame
-from process import segment 
+# wait 5 seconds for the server to start
+print("Waiting 5 seconds for the server to start...")
+time.sleep(5)
+sio = socketio.Client()
+sio.connect("http://localhost:42069")
 
-app = Flask(__name__)
-socketio = SocketIO(app)
+processed_frame = None
 
+@sio.on("gray-response")
+def on_response(data):
+    global processed_frame
+    pimg = np.frombuffer(base64.b64decode(data), dtype=np.uint8)
+    processed_frame = cv2.imdecode(pimg, 1)
 
-@socketio.on("grayscale")
-def handle_grayscale(data):
-    """
-    Inference function to process gray the frame and send the result back
-    Image is passed in as a base64 encoded string
-    """
-    frame = base64_to_img(data)
-    processed_frame = process_frame(frame)
-    encoded_str = img_to_base64(processed_frame)
-    socketio.emit("gray-response", encoded_str)
+cap = cv2.VideoCapture(0)
+prev_frame_time = time.time()
 
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
 
-@socketio.on("segment")
-def handle_segmentation(data):
-    """
-    Inference function to process the frame and send the result back
-    Image is passed in as a base64 encoded string
-    """
-    frame = base64_to_img(data)
-    processed_frame = segment(frame)
-    encoded_str = img_to_base64(processed_frame)
-    socketio.emit("segment-response", encoded_str)
+    # Encode the frame
+    # Send the frame to the server
+    _, buffer = cv2.imencode(".jpg", frame)
+    encoded_frame = base64.b64encode(buffer).decode("utf-8")    
+    sio.emit("grayscale", encoded_frame)
 
+    # Calculate FPS
+    current_time = time.time()
+    fps = 1 / (current_time - prev_frame_time)
+    prev_frame_time = current_time
+    fps_display = "FPS: {:.2f}".format(fps)
+    # print(fps_display, end='\r')
+    print("streaming")
 
-@socketio.on("hello-world")
-def handle_hello(data):
-    """
-    Simple hello world function to test the connection
-    """
-    message = "hello world"
-    encoded_message = str.encode(message)
-    socketio.emit("hello-response", encoded_message)
+    if processed_frame is not None:
+        height = max(frame.shape[0], processed_frame.shape[0])
+        width = frame.shape[1] + processed_frame.shape[1]
+        
+        # Resize frames to the same height
+        # Concatenate the frames horizontally
+        frame_resized = cv2.resize(frame, (int(frame.shape[1] * height / frame.shape[0]), height))
+        processed_frame_resized = cv2.resize(processed_frame, (int(processed_frame.shape[1] * height / processed_frame.shape[0]), height))
+        combined_frame = np.hstack((frame_resized, processed_frame_resized))
 
+        cv2.imshow("Webcam & Processed Stream Side by Side", combined_frame)
 
-def main(params):
-    socketio.run(app=app, 
-                 debug=params.debug, 
-                 host=params.host, 
-                 port=params.port, 
-                 allow_unsafe_werkzeug=True,
-                 use_reloader=True,)
+    if cv2.waitKey(1) & 0xFF == ord("q"):
+        break
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="MLP: socket inference server for open-ended ML models")
-    parser.add_argument("--host", default="0.0.0.0", help="Host IP address")
-    parser.add_argument("--port", type=int, default=42069, help="Port number")
-    parser.add_argument("--debug", action="store_true", default=True, help="Debug mode")
-    args = parser.parse_args()
-    main(args)
+cap.release()
+cv2.destroyAllWindows()
+sio.disconnect()
