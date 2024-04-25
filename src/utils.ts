@@ -1,4 +1,6 @@
 import * as code from 'vscode'
+import * as fs from 'fs';
+import * as path from 'path';
 import { help } from './extension'
 import { Config } from './input'
 
@@ -30,6 +32,29 @@ export function checkFns(editor: code.TextEditor): void {
   editor.setDecorations(help, helpPos)
 }
 
+// Loads a Python script from the config and loads it in editor
+export function launchPythonSandbox(config: Config): void {
+  // load temp file
+  const script: string = config["task"]["script"]
+  const tempDir = path.join(code.workspace.rootPath || '', '.tempScripts');
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir);
+  }
+  const tempScriptName = `temp_${config["task"]["name"]}.py`
+  const scriptPath = path.join(tempDir, tempScriptName);
+  fs.writeFileSync(scriptPath, script);
+  
+  // launch the file in vscode
+  (code.workspace.openTextDocument(scriptPath) as Promise<code.TextDocument>)
+  .then(document => {
+      code.window.showTextDocument(document);
+  })
+  .catch((error: any) => { // Handling the error with explicit any type for now
+      code.window.showErrorMessage('Failed to open Python script: ' + error.message);
+  });
+}
+
+// dims line for lines that are not in func def
 export function dim(editor: code.TextEditor, start: number): void {
   const indents = editor.document.lineAt(start).firstNonWhitespaceCharacterIndex
   let i = start, len = editor.document.lineCount
@@ -46,6 +71,7 @@ export function dim(editor: code.TextEditor, start: number): void {
   editor.setDecorations(dimmer, dimRanges)
 }
 
+// highlights the line and adds codeLens
 export function focus(editor: code.TextEditor, start: number, config: Config): void {
   let color, i, desc, remLen = Object.keys(config['line-desc']).length
   // keep passing the config object (reference), "popleft"-ing tasks:

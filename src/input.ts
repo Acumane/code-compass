@@ -9,7 +9,7 @@ export interface Config {
   "desc": string,
   "args": StrDict,
   "line-desc": StrDict
-  "task": { "desc": string, "out": string }
+  "task": { "name": string, "desc": string, "out": string, "script": string }
 }
 
 export function readConfig(): Promise<any> {
