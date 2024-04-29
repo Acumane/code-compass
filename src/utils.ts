@@ -3,6 +3,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { help, config } from './extension'
 import { Config } from './input'
+import * as tmp from 'tmp';
+
 
 type Deco = code.TextEditorDecorationType
 type DecoOpts = code.DecorationOptions
@@ -59,18 +61,15 @@ function genMain(): string {
 
 // loads a Python script from the config and loads it in editor
 export function sandbox(editor: code.TextEditor, start: number): [ number, code.TextEditor | null ] {
-  // load temp file
-  const tmpDir = path.join(code.workspace.rootPath || '', '.temp')
-  if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir)
+  // Create a temporary file that is deleted when the process exits
+  const tmpFile = tmp.fileSync({ postfix: '.py', keep: false });
 
-  const tmpName = `${config.func +'_'+ config.task.name}.py`,
-  tmpPath = path.join(tmpDir, tmpName),
-  fn = editor.document.getText(getFnRange(editor, start)),
+  const fn = editor.document.getText(getFnRange(editor, start)),
   [ imports, tmpStart ] = getImports(editor)
-  fs.writeFileSync(tmpPath, imports + fn + genMain());
+  fs.writeFileSync(tmpFile.name, imports + fn + genMain());
 
   // launch the file in vscode
-  (code.workspace.openTextDocument(tmpPath) as Promise<code.TextDocument>)
+  (code.workspace.openTextDocument(tmpFile.name) as Promise<code.TextDocument>)
   .then(document => {
     code.window.showTextDocument(document)
     return [ tmpStart, code.window.activeTextEditor ]
