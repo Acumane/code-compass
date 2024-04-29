@@ -50,16 +50,19 @@ export function activate(context: code.ExtensionContext) {
           code.window.showInformationMessage('Learn about this function?', 'Start', 'Dismiss')
             .then(choice => {
               if (choice == 'Start') {
-                let start = onFn.range.start.line 
-                utils.dim(editor, start)
-                utils.focus(editor, start, config)
-                learning = true
-                code.window.showInformationMessage('Learning', 'Done')
-                .then(choice => {
-                  if (choice == 'Done' && utils.dimmer) {
-                    code.commands.executeCommand('compass.exit')
-                  }
-                })
+                let fnStart = onFn.range.start.line 
+                let [ tmpStart, tmpEditor ] = utils.sandbox(editor, fnStart)
+                if (tmpEditor) { // if successfully created/switched to temp file
+                  utils.dim(tmpEditor, tmpStart)
+                  utils.focus(tmpEditor, tmpStart, config)
+                  learning = true
+                  code.window.showInformationMessage('Learning', 'Done')
+                  .then(choice => {
+                    if (choice == 'Done' && utils.dimmer) {
+                      code.commands.executeCommand('compass.exit')
+                    }
+                  })
+                }
               }
               else if (choice == 'Dismiss') {
                 const sig = editor.document.getText(onFn.range)
