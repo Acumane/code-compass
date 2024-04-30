@@ -14,8 +14,8 @@ export function activate(context: code.ExtensionContext) {
   input.readConfig().then((JSON) => config = JSON)
 
   // Array of all icons added to the active editor:
-  let editor = code.window.activeTextEditor,
-  prevLine: null | number = null, learning = false
+  let editor = code.window.activeTextEditor as code.TextEditor,
+  prevLine: null | number = null, learning = false, origEditor = editor
 
   code.commands.registerCommand('compass.continue', (nextLine, config) => {
     utils.actions.dispose(); utils.hl.dispose()
@@ -26,7 +26,8 @@ export function activate(context: code.ExtensionContext) {
 
   code.commands.registerCommand('compass.exit', () => {
     utils.dimmer.dispose(); utils.hl.dispose(); utils.actions.dispose()
-    learning = false
+    learning = false; editor.hide()
+    code.window.showTextDocument(origEditor.document)
   })
 
   if (editor) utils.checkFns(editor)
@@ -51,18 +52,14 @@ export function activate(context: code.ExtensionContext) {
             .then(choice => {
               if (choice == 'Start') {
                 let fnStart = onFn.range.start.line 
-                let [ tmpStart, tmpEditor ] = utils.sandbox(editor, fnStart)
-                if (tmpEditor) { // if successfully created/switched to temp file
-                  utils.dim(tmpEditor, tmpStart)
-                  utils.focus(tmpEditor, tmpStart, config)
+                utils.sandbox(editor, fnStart).then(tmpStart => {
+                  editor.hide() // hide original editor
+                  editor = code.window.activeTextEditor as code.TextEditor
+                  utils.dim(editor, tmpStart)
+                  utils.focus(editor, tmpStart, config)
                   learning = true
-                  code.window.showInformationMessage('Learning', 'Done')
-                  .then(choice => {
-                    if (choice == 'Done' && utils.dimmer) {
-                      code.commands.executeCommand('compass.exit')
-                    }
-                  })
-                }
+                  code.window.showInformationMessage('Learning')
+                })
               }
               else if (choice == 'Dismiss') {
                 const sig = editor.document.getText(onFn.range)

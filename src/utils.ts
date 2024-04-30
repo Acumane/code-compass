@@ -1,10 +1,8 @@
 import * as code from 'vscode'
 import * as fs from 'fs';
-import * as path from 'path';
+import * as tmp from 'tmp'
 import { help, config } from './extension'
 import { Config } from './input'
-import * as tmp from 'tmp';
-
 
 type Deco = code.TextEditorDecorationType
 type DecoOpts = code.DecorationOptions
@@ -42,14 +40,14 @@ export function getImports(editor: code.TextEditor): [string, number] {
       const line = doc.lineAt(i).text.trim()
       if (line.startsWith('import') || line.startsWith('from')) {
         imports.push(line); count++
-      } 
+      }
   }
-  return [imports.join('\n') + '\n\n', count+2]
+  return [imports.join('\n') + '\n\n', count+1]
 }
 
 // Python code entry (var assign + func call)
 function genMain(): string {
-  let entry = '\n\n'
+  let entry = '\n'
   for (const key in config.args) {
     const value = config.args[key]
     entry += `${key} = ${value}\n`
@@ -60,26 +58,22 @@ function genMain(): string {
 }
 
 // loads a Python script from the config and loads it in editor
-export function sandbox(editor: code.TextEditor, start: number): [ number, code.TextEditor | null ] {
+export async function sandbox(editor: code.TextEditor, start: number): Promise<number> {
   // Create a temporary file that is deleted when the process exits
-  const tmpFile = tmp.fileSync({ postfix: '.py', keep: false });
-
-  const fn = editor.document.getText(getFnRange(editor, start)),
+  const tmpFile = tmp.fileSync({ name: `${config.func+'_'+config.task.name}.py`, keep: false }),
+  fn = editor.document.getText(getFnRange(editor, start)),
   [ imports, tmpStart ] = getImports(editor)
-  fs.writeFileSync(tmpFile.name, imports + fn + genMain());
+  fs.writeFileSync(tmpFile.name, imports + fn + genMain())
+  tmp.setGracefulCleanup()
 
-  // launch the file in vscode
-  (code.workspace.openTextDocument(tmpFile.name) as Promise<code.TextDocument>)
-  .then(document => {
-    code.window.showTextDocument(document)
-    return [ tmpStart, code.window.activeTextEditor ]
-  })
-  .catch((error: any) => { // Handling the error with explicit any type for now
+  try {
+    const doc = await code.workspace.openTextDocument(tmpFile.name)
+    await code.window.showTextDocument(doc)
+  } catch (error: any) {
     code.window.showErrorMessage('Failed to open Python script: ' + error.message)
-  })
-  return [ tmpStart, null ]
+  }
+  return tmpStart
 }
-
 
 // code.Range: start - end line of function
 export function getFnRange(editor: code.TextEditor, start: number): code.Range {
@@ -97,7 +91,7 @@ export function dim(editor: code.TextEditor, start: number): void {
     const func = getFnRange(editor, start),
     len = editor.document.lineCount
 
-    dimmer = code.window.createTextEditorDecorationType({ opacity: '0.25' })
+    dimmer = code.window.createTextEditorDecorationType({ opacity: '0.1' })
     const dimRanges: code.Range[] = []
     
     if (func.start.line > 0) dimRanges.push(new code.Range(0, 0, func.start.line, 0))

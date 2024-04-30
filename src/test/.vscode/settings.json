@@ -3,5 +3,6 @@
         "reportMissingImports": "none",
         "reportMissingModuleSource": "none",
         "reportCallIssue": "none"
-    }
+    },
+    "editor.foldingImportsByDefault": true
 }
