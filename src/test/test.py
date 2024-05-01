@@ -14,9 +14,8 @@ processed_frame = None
 
 @sio.on("gray-response")
 def on_response(data):
-    global processed_frame
     pimg = np.frombuffer(base64.b64decode(data), dtype=np.uint8)
-    processed_frame = cv2.imdecode(pimg, 1)
+    global processed_frame; processed_frame = cv2.imdecode(pimg, 1)
 
 cap = cv2.VideoCapture(0)
 prev_frame_time = time.time()

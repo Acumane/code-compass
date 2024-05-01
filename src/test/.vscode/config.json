@@ -2,16 +2,15 @@
     "func": "on_response",
     "desc": "Callback function to handle 'gray-response' events from the server. It decodes the incoming base64-encoded string into a numpy array, which is then decoded into an image frame using OpenCV's imdecode function. This image is stored in a global variable for further use.",
     "args": {
-        "data" : "'/9j/4AAQSkZJRgA'"
+        "data" : "\"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=\""
     },
     "line-desc": {
-        "1": "Global declaration of the variable 'processed_frame' to store the decoded image.",
-        "2": "Decodes the base64-encoded string into 8-bit unsigned integer array where each integer represents a pixel value.",
-        "3": "Decodes the integer array into an image using OpenCV, specifying a color mode of 1 (color image)."
+        "1": "Line 1 desc",
+        "2": "Line 2 desc"
     },
     "task": {
         "name": "demo_1",
         "desc": "Modify the on-response function to generate a gray-scale image of the passed-in image using the cvtColor function in the CV library. Base64 encode this image and return the result.",
-        "out" : "'/9j/4AAQSkZJRgA'"
+        "out" : "\"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=\""
     }
 }

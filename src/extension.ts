@@ -19,14 +19,20 @@ export function activate(context: code.ExtensionContext) {
 
   code.commands.registerCommand('compass.continue', (nextLine, config) => {
     utils.actions.dispose(); utils.hl.dispose()
-    if (editor) utils.focus(editor, nextLine, config)
+    if (editor) {
+      utils.focus(editor, nextLine, config)
+      code.commands.executeCommand('workbench.action.debug.stepOver')
+    }
   })
 
   code.commands.registerCommand('compass.validate', (sol) => {} ) // TODO
 
-  code.commands.registerCommand('compass.exit', () => {
+  code.commands.registerCommand('compass.exit', (start) => {
     utils.dimmer.dispose(); utils.hl.dispose(); utils.actions.dispose()
     learning = false; editor.hide()
+    if (editor) {
+      utils.exitDebugger(editor, start);
+    }
     code.window.showTextDocument(origEditor.document)
   })
 
@@ -57,12 +63,14 @@ export function activate(context: code.ExtensionContext) {
                   editor = code.window.activeTextEditor as code.TextEditor
                   utils.dim(editor, tmpStart)
                   utils.focus(editor, tmpStart, config)
+                  utils.startDebugger(editor, tmpStart)
                   learning = true
                   code.window.showInformationMessage('Learning')
                 })
               }
               else if (choice == 'Dismiss') {
                 const sig = editor.document.getText(onFn.range)
+                code.commands.executeCommand('compass.exit', onFn.range.start.line)
                 utils.dismissed.push(sig)
                 utils.checkFns(editor)
               }

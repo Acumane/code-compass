@@ -1,8 +1,9 @@
 import * as code from 'vscode'
-import * as fs from 'fs';
+import * as fs from 'fs'
 import * as tmp from 'tmp'
 import { help, config } from './extension'
 import { Config } from './input'
+import { exit } from 'process';
 
 type Deco = code.TextEditorDecorationType
 type DecoOpts = code.DecorationOptions
@@ -65,7 +66,7 @@ export async function sandbox(editor: code.TextEditor, start: number): Promise<n
   [ imports, tmpStart ] = getImports(editor)
   fs.writeFileSync(tmpFile.name, imports + fn + genMain())
   tmp.setGracefulCleanup()
-
+ 
   try {
     const doc = await code.workspace.openTextDocument(tmpFile.name)
     await code.window.showTextDocument(doc)
@@ -100,11 +101,29 @@ export function dim(editor: code.TextEditor, start: number): void {
     editor.setDecorations(dimmer, dimRanges)
 }
 
+export function exitDebugger(editor: code.TextEditor, start: number): void {
+    // Stop debugger, go to line, toggle breakpoint to unset it:
+    code.commands.executeCommand('workbench.action.debug.stop')
+    let range = editor.document.lineAt(start + 1).range;
+    editor.selection =  new code.Selection(range.start, range.start);
+    editor.revealRange(range);
+    //code.commands.executeCommand('editor.debug.action.toggleBreakpoint')
+}
+
+export function startDebugger(editor: code.TextEditor, start: number) {
+  let range = editor.document.lineAt(start + 1).range;
+  editor.selection =  new code.Selection(range.start, range.start);
+  editor.revealRange(range);
+  code.commands.executeCommand('editor.debug.action.toggleBreakpoint')
+  code.commands.executeCommand('workbench.action.debug.start');
+}
+
 // highlights the line and adds codeLens
 export function focus(editor: code.TextEditor, start: number, config: Config): void {
   let color, i, desc, remLen = Object.keys(config['line-desc']).length
   // keep passing the config object (reference), "popleft"-ing tasks:
   if (remLen == 0) { // Tutorial complete, begin task
+    exitDebugger(editor, start)
     i = 0; desc = config['task']['desc']; color = "#FFA30440"
   } else {
     i = Number(Object.keys(config['line-desc'])[0])
@@ -147,6 +166,7 @@ export function focus(editor: code.TextEditor, start: number, config: Config): v
       new code.CodeLens(lineRange, {
         title: '⨯ Exit',
         command: 'compass.exit',
+        arguments: [start, config], // will call focus() again
       })
     ],
   })
