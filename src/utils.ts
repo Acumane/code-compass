@@ -3,7 +3,6 @@ import * as fs from 'fs'
 import * as tmp from 'tmp'
 import { help, config } from './extension'
 import { Config } from './input'
-import { exit } from 'process';
 
 type Deco = code.TextEditorDecorationType
 type DecoOpts = code.DecorationOptions
@@ -61,17 +60,22 @@ function genMain(): string {
 // loads a Python script from the config and loads it in editor
 export async function sandbox(editor: code.TextEditor, start: number): Promise<number> {
   // Create a temporary file that is deleted when the process exits
-  const tmpFile = tmp.fileSync({ name: `${config.func+'_'+config.task.name}.py`, keep: false }),
+  const tmpFile = tmp.fileSync({ prefix: `${config.func}`, postfix: `${config.task.name}.py`, keep: false }),
   fn = editor.document.getText(getFnRange(editor, start)),
   [ imports, tmpStart ] = getImports(editor)
   fs.writeFileSync(tmpFile.name, imports + fn + genMain())
   tmp.setGracefulCleanup()
- 
+  process.on('uncaughtException', () => { process.exit(1) })
+  process.on('exit', () => {
+    try { fs.unlinkSync(tmpFile.name) }
+    catch (e: any) { console.error(e.message)}
+  })
+
   try {
     const doc = await code.workspace.openTextDocument(tmpFile.name)
     await code.window.showTextDocument(doc)
-  } catch (error: any) {
-    code.window.showErrorMessage('Failed to open Python script: ' + error.message)
+  } catch (e: any) {
+    code.window.showErrorMessage('Failed to open Python script: ' + e.message)
   }
   return tmpStart
 }

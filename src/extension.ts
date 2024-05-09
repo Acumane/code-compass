@@ -15,7 +15,7 @@ export function activate(context: code.ExtensionContext) {
 
   // Array of all icons added to the active editor:
   let editor = code.window.activeTextEditor as code.TextEditor,
-  prevLine: null | number = null, learning = false, origEditor = editor
+  prevLine: null | number = null, learning = false, origEditor: code.TextEditor
 
   code.commands.registerCommand('compass.continue', (nextLine, config) => {
     utils.actions.dispose(); utils.hl.dispose()
@@ -30,20 +30,25 @@ export function activate(context: code.ExtensionContext) {
   code.commands.registerCommand('compass.exit', (start) => {
     utils.dimmer.dispose(); utils.hl.dispose(); utils.actions.dispose()
     learning = false; editor.hide()
-    if (editor) {
-      utils.exitDebugger(editor, start);
-    }
+    if (editor) utils.exitDebugger(editor, start)
     code.window.showTextDocument(origEditor.document)
   })
 
   if (editor) utils.checkFns(editor)
 
-  code.window.onDidChangeActiveTextEditor(changed => {
-    if (editor && changed) utils.checkFns(editor)
-  }, null, context.subscriptions)
+code.window.onDidChangeActiveTextEditor(changed => {
+  if (changed && changed.document.languageId === 'python') {
+    const inWorkspace = code.workspace.getWorkspaceFolder(changed.document.uri)!.name
+    if (inWorkspace) { // ignore change to tmp file
+      editor = code.window.activeTextEditor!
+      utils.checkFns(editor)
+    }
+  }
+}, null, context.subscriptions);
 
   code.workspace.onDidChangeTextDocument(changed => {
-    if (editor && changed.document == editor.document) utils.checkFns(editor)
+    if (editor && changed.document == editor.document
+        && changed.document.languageId === 'python') utils.checkFns(editor)
   }, null, context.subscriptions)
 
   // Watch for cursor movements:
@@ -57,7 +62,7 @@ export function activate(context: code.ExtensionContext) {
           code.window.showInformationMessage('Learn about this function?', 'Start', 'Dismiss')
             .then(choice => {
               if (choice == 'Start') {
-                let fnStart = onFn.range.start.line 
+                let fnStart = onFn.range.start.line; origEditor = editor
                 utils.sandbox(editor, fnStart).then(tmpStart => {
                   editor.hide() // hide original editor
                   editor = code.window.activeTextEditor as code.TextEditor
