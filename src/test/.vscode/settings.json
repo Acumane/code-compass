@@ -1,4 +1,7 @@
 {
+    "files.exclude": {
+        ".vscode": true,
+    },
     "python.analysis.diagnosticSeverityOverrides": {
         "reportMissingImports": "none",
         "reportMissingModuleSource": "none",

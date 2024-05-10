@@ -1,27 +1,28 @@
 import * as code from 'vscode'
 import * as fs from 'fs'
 import * as tmp from 'tmp'
+import * as input from './input'
 import { help, config } from './extension'
-import { Config } from './input'
 
 type Deco = code.TextEditorDecorationType
 type DecoOpts = code.DecorationOptions
 export var dismissed: string[] = [], helpPos: DecoOpts[] = [],
 dimmer: Deco, hl: Deco, actions: code.Disposable
 
-export function checkFns(editor: code.TextEditor): void {
-  if (!editor) return
+export async function checkFns(editor: code.TextEditor): Promise<void> {
+  let _config: input.Config // if called before config read:
+  if (!config) _config = await input.readConfig()
+  else _config = config
 
   const text = editor.document.getText(),
   RE = /def\s+\w+\s*\(.*\):/g
   helpPos = []
-  let match
+  let sig
 
   // Find all function signatures in the active editor:
-  while ((match = RE.exec(text))) {
-    const signature = match[0]
-    if (!dismissed.includes(signature)) {
-      const line = editor.document.positionAt(match.index).line
+  while ((sig = RE.exec(text))) {
+    if (!dismissed.includes(sig[0]) && sig[0].includes(_config.func)) {
+      const line = editor.document.positionAt(sig.index).line
       const decoration: code.DecorationOptions = {
         range: editor.document.lineAt(line).range,
       }
@@ -123,7 +124,7 @@ export function startDebugger(editor: code.TextEditor, start: number) {
 }
 
 // highlights the line and adds codeLens
-export function focus(editor: code.TextEditor, start: number, config: Config): void {
+export function focus(editor: code.TextEditor, start: number, config: input.Config): void {
   let color, i, desc, remLen = Object.keys(config['line-desc']).length
   // keep passing the config object (reference), "popleft"-ing tasks:
   if (remLen == 0) { // Tutorial complete, begin task

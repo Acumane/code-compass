@@ -1,7 +1,8 @@
 {
   "name": "code-compass",
   "displayName": "Code Compass",
-  "description": "",
+  "description": "Prototype solution for our need-finding study on debugging unfamiliar codebases. UCB CS294-184, S24",
+  "publisher": "cs-294",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.88.0"
